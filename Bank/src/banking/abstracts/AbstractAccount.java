@@ -1,52 +1,37 @@
 package banking.abstracts;
 
-import banking.exceptions.AccountException;
 import banking.interfaces.AccountInterface;
+import banking.exceptions.AccountException;
+import banking.transactions.Transaction;
+import banking.transactions.TransactionEnum;
 
 import java.util.HashMap;
-import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 public abstract class AbstractAccount implements AccountInterface {
-    private static long accountCounter = 1000000000000000000L;
-
+    private double accountLimit;
+    private double openFee;
+    private double maintenanceFee;
+    private HashMap<String, Transaction> movements;
     private String accountNumber;
-    private String name;
     private String email;
     private String phoneNumber;
-    protected double balance;
-    protected double accountLimit;
-    protected double openingFee;
-    protected double maintenanceFee;
-    protected Map<String, Map<String, Object>> movements = new HashMap<>();
+    private String name;
+    private double balance;
 
     public AbstractAccount() {
-        this.accountNumber = String.valueOf(accountCounter++);
-    }
-
-    @Override
-    public void createAccount(String name, String email, String phoneNumber, double initialBalance) throws AccountException {
-        setName(name);
-        setEmail(email);
-        setPhoneNumber(phoneNumber);
-        if (initialBalance < 0) {
-            throw new AccountException("Initial balance cannot be negative.");
-        }
-        this.balance = initialBalance - openingFee - maintenanceFee;
-    }
-
-    @Override
-    public String getAccountNumber() {
-        return accountNumber;
+        this.movements = new HashMap<>();
     }
 
     @Override
     public boolean setEmail(String email) throws AccountException {
-        if (email == null || !Pattern.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$", email)) {
-            throw new AccountException("Invalid email format.");
+        if (Pattern.matches("^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$", email)) {
+            this.email = email;
+            return true;
+        } else {
+            throw new AccountException("Invalid email format");
         }
-        this.email = email;
-        return true;
     }
 
     @Override
@@ -56,11 +41,12 @@ public abstract class AbstractAccount implements AccountInterface {
 
     @Override
     public boolean setPhoneNumber(String phoneNumber) throws AccountException {
-        if (phoneNumber == null || !Pattern.matches("^\\+?[0-9]{10,13}$", phoneNumber)) {
-            throw new AccountException("Invalid phone number format.");
+        if (Pattern.matches("^\\+?[0-9]{10,13}$", phoneNumber)) {
+            this.phoneNumber = phoneNumber;
+            return true;
+        } else {
+            throw new AccountException("Invalid phone number format");
         }
-        this.phoneNumber = phoneNumber;
-        return true;
     }
 
     @Override
@@ -70,11 +56,12 @@ public abstract class AbstractAccount implements AccountInterface {
 
     @Override
     public boolean setName(String name) throws AccountException {
-        if (name == null || name.isEmpty()) {
-            throw new AccountException("Name cannot be empty.");
+        if (name != null && !name.trim().isEmpty()) {
+            this.name = name;
+            return true;
+        } else {
+            throw new AccountException("Name cannot be empty");
         }
-        this.name = name;
-        return true;
     }
 
     @Override
@@ -88,19 +75,64 @@ public abstract class AbstractAccount implements AccountInterface {
     }
 
     @Override
-    public String queryTransaction(String id) throws AccountException {
-        if (!movements.containsKey(id)) {
-            throw new AccountException("Transaction not found.");
-        }
-        return movements.get(id).toString();
+    public String getAccountNumber() {
+        return this.accountNumber;
     }
 
-    protected void addMovement(String type, String concept, double amount) {
-        String id = String.valueOf(movements.size() + 1);
-        Map<String, Object> movement = new HashMap<>();
-        movement.put("type", type);
-        movement.put("concept", concept);
-        movement.put("amount", amount);
-        movements.put(id, movement);
+    @Override
+    public double consultTransaction(String id) throws AccountException {
+        if (movements.containsKey(id)) {
+            return movements.get(id).getAmount();
+        } else {
+            throw new AccountException("Transaction ID not found");
+        }
+    }
+
+    protected void setAccountNumber(String accountNumber) {
+        this.accountNumber = accountNumber;
+    }
+
+    protected void setBalance(double balance) {
+        this.balance = balance;
+    }
+
+    protected void addMovement(Transaction transaction) {
+        movements.put(transaction.getId(), transaction);
+    }
+
+    protected void setAccountLimit(double accountLimit) {
+        this.accountLimit = accountLimit;
+    }
+
+    protected void setOpenFee(double openFee) {
+        this.openFee = openFee;
+    }
+
+    protected void setMaintenanceFee(double maintenanceFee) {
+        this.maintenanceFee = maintenanceFee;
+    }
+
+    protected String generateAccountNumber() {
+        return UUID.randomUUID().toString().replace("-", "").substring(0, 18);
+    }
+
+    @Override
+    public double withdraw(double amount) throws AccountException {
+        if (amount > balance) {
+            throw new AccountException("Insufficient balance");
+        }
+        setBalance(balance - amount);
+        addMovement(new Transaction(TransactionEnum.WITHDRAWAL, "Withdrawal", amount));
+        return balance;
+    }
+
+    @Override
+    public double transfer(double amount, String concept) throws AccountException {
+        if (amount > balance) {
+            throw new AccountException("Insufficient balance");
+        }
+        setBalance(balance - amount);
+        addMovement(new Transaction(TransactionEnum.CHARGES, concept, amount));
+        return balance;
     }
 }
