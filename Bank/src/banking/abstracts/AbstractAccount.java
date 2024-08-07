@@ -127,6 +127,13 @@ public abstract class AbstractAccount implements AccountInterface {
     }
 
     @Override
+    public double deposit(double amount) {
+        setBalance(balance + amount);
+        addMovement(new Transaction(TransactionEnum.DEPOSIT, "Deposit", amount));
+        return balance;
+    }
+
+    @Override
     public double transfer(double amount, String concept) throws AccountException {
         if (amount > balance) {
             throw new AccountException("Insufficient balance");

@@ -13,6 +13,7 @@ public interface AccountInterface {
     String getName();
     double getBalance();
     double withdraw(double amount) throws AccountException;
+    double deposit(double amount);
     double transfer(double amount, String concept) throws AccountException;
     double consultTransaction(String id) throws AccountException;
 }
